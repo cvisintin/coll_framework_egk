@@ -1,0 +1,75 @@
+#Load in required packages
+require(mapdata)
+require(maptools)
+require(scales)
+require(rgdal)
+require(raster)
+require(spdep)
+require(gbm)
+require(dismo)
+
+setwd('Grids/Envi') #Set working directory to location of covariate ASCII grids
+
+ascii.files <- list.files() #Create vector of filenames
+
+ascii.names <- unlist(strsplit(ascii.files,"\\."))[(1:(2*(length(ascii.files)))*2)-1][1:length(ascii.files)] #Create vector of covariate names
+
+victoria <- readShapePoly("../../Data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
+
+r <- raster(ncol=822, nrow=563, xmn=-58000, xmx=764000, ymn=5661000, ymx=6224000) #Create raster template to define extents and resolution of maps
+
+vic.rst <- rasterize(victoria, r, 'UFI') #Rasterize shapefile for use in raster calculations
+
+clip <- extent(-58000, 764000, 5661000, 6224000) #Define clipping extent of maps
+
+#Read in ASCII grids, crop, and multiply with template to create consistent covariate maps
+for (i in 1:length(ascii.files)) {
+  temp <- raster(ascii.files[i])
+  temp <- crop(temp, clip)
+  assign(ascii.names[i],temp * vic.rst)
+}
+vars <- stack(mget(ascii.names)) #Combine all maps to single stack
+
+setwd('../..') #Change working directory to top level
+
+egk.final <- read.csv("Data/model_data_egk.csv", header=T, sep=",") #Read in dependent variable data (presences/absences of kangaroos and locations)
+egk.coord <- egk.final[,1:2] #Extract coordinates for sampling
+
+samples.df <- extract(vars,egk.coord) #Sample covariates at coordinates
+
+model.data <- cbind(egk.final,samples.df) #Combine presence/absence data with covariate values
+model.data <- na.omit(model.data) #Remove any records with missing information 
+
+sdm.colors = colorRampPalette(c("white","red")) #Define color scheme for plotting
+
+set.seed(123) #Set random seed to make results of gradient boosted regressions identical for each run
+
+kang.brt = gbm.step(data = model.data, gbm.x = 4:10, gbm.y = 3, family = "bernoulli", tree.complexity = 7, learning.rate = 0.005, bag.fraction = 0.5) #Create boosted regression tree model
+
+brt.preds <- predict(vars, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps
+
+writeRaster(brt.preds, filename="Pred/EGK_preds.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
+
+plot(brt.preds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
+
+########Predict to Continental Scale########
+
+setwd('Grids/Envi') #Set working directory to location of covariate ASCII grids
+
+extent(-3070000, 1150000, 5160000, 8830000) #Define extent of map
+
+#Read in and convert ASCII files to raster maps
+for(i in 1:length(ascii.files)) {
+  temp <- raster(ascii.files[i])
+  assign(ascii.names[i], temp, immediate=T)
+}
+
+vars.aus <- stack(mget(ascii.names)) #Combine all maps to single stack
+
+brt.AUSpreds <- predict(vars.aus, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps - this takes some time...
+
+setwd('../..') #Change working directory to top level
+
+writeRaster(brt.AUSpreds, filename="Pred/EGK_preds-AUS.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
+
+plot(brt.AUSpreds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
