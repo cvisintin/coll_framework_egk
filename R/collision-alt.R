@@ -18,9 +18,9 @@ require(gbm)
     return(round(roc, 4))
   }
 
-model.data <- read.delim("Data/model_data_coll_class.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
+model.data <- read.delim("data/model_data_coll_class.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
 
-victoria <- readShapePoly("Data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
+victoria <- readShapePoly("data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
 
 r <- raster(ncol=822, nrow=563, xmn=-58000, xmx=764000, ymn=5661000, ymx=6224000) #Create raster template to define extents and resolution of maps
 
@@ -28,7 +28,7 @@ vic.rst <- rasterize(victoria, r, 'UFI') #Rasterize shapefile for use in raster 
 
 clip <- extent(-58000, 764000, 5661000, 6224000) #Define clipping extent of maps
 
-setwd('Grids/Envi') #Set working directory to location of covariate ASCII grids
+setwd('grids/envi') #Set working directory to location of covariate ASCII grids
 
 ascii.files1 <- list.files() #Create vector of filenames
 
@@ -41,7 +41,7 @@ for (i in 1:length(ascii.files1)) {
   assign(ascii.names1[i],temp * vic.rst)
 }
 
-setwd('../Anth') #Set working directory to location of covariate ASCII grids
+setwd('../anth') #Set working directory to location of covariate ASCII grids
 
 ascii.files2 <- list.files() #Create vector of filenames
 
