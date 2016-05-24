@@ -18,9 +18,9 @@ require(gbm)
     return(round(roc, 4))
   }
 
-model.data <- read.delim("data/model_data_coll_class.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
+model.data <- read.delim("../data/model_data_coll_class.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
 
-victoria <- readShapePoly("data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
+victoria <- readShapePoly("../data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
 
 r <- raster(ncol=822, nrow=563, xmn=-58000, xmx=764000, ymn=5661000, ymx=6224000) #Create raster template to define extents and resolution of maps
 
@@ -28,28 +28,24 @@ vic.rst <- rasterize(victoria, r, 'UFI') #Rasterize shapefile for use in raster 
 
 clip <- extent(-58000, 764000, 5661000, 6224000) #Define clipping extent of maps
 
-setwd('grids/envi') #Set working directory to location of covariate ASCII grids
-
-ascii.files1 <- list.files() #Create vector of filenames
+ascii.files1 <- list.files(path='../data/grids/envi') #Create vector of filenames
 
 ascii.names1 <- unlist(strsplit(ascii.files1,"\\."))[(1:(2*(length(ascii.files1)))*2)-1][1:length(ascii.files1)] #Create vector of covariate names
 
 #Read in ASCII grids, crop, and multiply with template to create consistent covariate maps
 for (i in 1:length(ascii.files1)) {
-  temp <- raster(ascii.files1[i])
+  temp <- raster(paste0("../data/grids/envi",ascii.files1[i]))
   temp <- crop(temp, clip)
   assign(ascii.names1[i],temp * vic.rst)
 }
 
-setwd('../anth') #Set working directory to location of covariate ASCII grids
-
-ascii.files2 <- list.files() #Create vector of filenames
+ascii.files2 <- list.files(path='../data/grids/anth') #Create vector of filenames
 
 ascii.names2 <- unlist(strsplit(ascii.files2,"\\."))[(1:(2*(length(ascii.files2)))*2)-1][1:length(ascii.files2)] #Create vector of covariate names
 
 #Read in ASCII grids, crop, and multiply with template to create consistent covariate maps
 for (i in 1:length(ascii.files2)) {
-  temp <- raster(ascii.files2[i])
+  temp <- raster(paste0("../data/grids/anth",ascii.files2[i]))
   temp <- crop(temp, clip)
   assign(ascii.names2[i],temp * vic.rst)
 }
@@ -120,7 +116,7 @@ paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$devianc
 anova <- anova(coll.glm)
 anova[,2]/(anova[1,4]-anova[15,4])
 
-val.data <- read.delim("Data/model_data_coll_class2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
+val.data <- read.delim("../data/model_data_coll_class2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
 val.data$RDCLASS <- as.factor(val.data$RDCLASS)
 
 val.coord <- val.data[,7:8] #Extract coordinates for sampling

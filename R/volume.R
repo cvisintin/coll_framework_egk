@@ -1,4 +1,4 @@
-model.data <- read.delim("Data/model_data_volume.csv", header=T, sep=",")  #Read in traffic volume data for road segments
+model.data <- read.delim("../data/model_data_volume.csv", header=T, sep=",")  #Read in traffic volume data for road segments
 
 model.data$RDCLASS <- factor(model.data$RDCLASS, levels = 0:5)  #Define road class covariate as a factor with six levels
 
@@ -11,7 +11,7 @@ trans.rf <- randomForest(formula = log(AADT) ~ INCOMEPP + KMTODEV + KMTOHWY + PO
 
 summary(trans.lglm) #Examine fit of regression model
 
-indep.data <- read.delim("Data/VIC_GDA9455_ROADS_VICSTATE_GRID_CLIP_FINAL.csv", header=T, sep=",")  #Read in covariate data for all road segments
+indep.data <- read.delim("../data/VIC_GDA9455_ROADS_VICSTATE_GRID_CLIP_FINAL.csv", header=T, sep=",")  #Read in covariate data for all road segments
 
 indep.data$RDCLASS <- factor(indep.data$RDCLASS, levels = 0:5)  #Define road class covariate as a factor with six levels
 
@@ -30,4 +30,4 @@ vol.preds <- as.data.frame(cbind(indep.data$UID,exp(lm.preds)))  #Combine predic
 
 names(vol.preds) <- c("UID","TVOL")  #Rename columns in dataframe
 
-write.csv(vol.preds, file = "Pred/vol_preds.csv")  #Write out predictions for all road segments
+write.csv(vol.preds, file = "../output/vol_preds.csv")  #Write out predictions for all road segments

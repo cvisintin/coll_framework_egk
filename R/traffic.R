@@ -2,7 +2,7 @@ library("randomForest")
 library("data.table")
 library("doMC")
 
-model.data <- as.data.table(read.delim("Data/model_data_traffic.csv", header=T, sep=",", na.strings=c("NA", "NULL")))  #Read in traffic volume data for road segments
+model.data <- as.data.table(read.delim("../data/model_data_traffic.csv", header=T, sep=",", na.strings=c("NA", "NULL")))  #Read in traffic volume data for road segments
 model.data$RDCLASS <- factor(model.data$RDCLASS, levels = 0:5)  #Define road class covariate as a factor with six levels
 
 set.seed(123)
@@ -11,7 +11,7 @@ volume.rf <- randomForest(formula = log(AADT) ~ INCOMEPP + KMTODEV + KMTOHWY + P
 vol.preds <- predict(volume.rf, model.data, type="response")
 vol.preds.df <- as.data.frame(cbind(model.data$UID,exp(vol.preds)))  #Combine predictions with unique IDs for all road segments
 names(vol.preds.df) <- c("UID","TVOL") 
-write.csv(vol.preds.df, file = "Pred/vol_preds_rf.csv")
+write.csv(vol.preds.df, file = "../output/vol_preds_rf.csv")
 
 set.seed(123)
 speed.rf3 <- randomForest(formula = SPEEDLMT ~ RDCLASS + RDDENS + X + Y, data = model.data[!is.na(model.data$SPEEDLMT),], mtry=2)  #Fit random forest model
@@ -19,7 +19,7 @@ speed.rf3 <- randomForest(formula = SPEEDLMT ~ RDCLASS + RDDENS + X + Y, data = 
 speed.preds <- predict(speed.rf, model.data, type="response")
 speed.preds.df <- as.data.frame(cbind(model.data$UID,speed.preds))  #Combine predictions with unique IDs for all road segments
 names(speed.preds.df) <- c("UID","TSPD") 
-write.csv(speed.preds.df, file = "Pred/speed_preds_rf.csv")
+write.csv(speed.preds.df, file = "../output/speed_preds_rf.csv")
 
 
 ###########Working...
@@ -35,7 +35,7 @@ sqrt(sum((exp(volume.rf$predicted) - model.data[!is.na(model.data$AADT),.(AADT)]
 
 
 localH2O = h2o.init() 
-volume.hex <-  h2o.uploadFile(localH2O, path = "Data/model_data_traffic.csv")
+volume.hex <-  h2o.uploadFile(localH2O, path = "../data/model_data_traffic.csv")
 summary(volume.hex)
 
 volume.hex[,8] <- as.factor(volume.hex[,8])
@@ -67,4 +67,4 @@ vol.preds <- cbind(as.data.frame(volume.hex[["UID", exact = TRUE]]),as.data.fram
 
 names(vol.preds) <- c("UID","TVOL")
 
-write.csv(vol.preds, file = "Pred/vol_preds_rf.csv")
+write.csv(vol.preds, file = "../output/vol_preds_rf.csv")

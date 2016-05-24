@@ -305,17 +305,17 @@ plot.gbm2 <- function (x, i.var = 1, n.trees = x$n.trees, continuous.resolution 
 
 
 
-pdf('/home/casey/Research/Projects/EGK_Collisions/Publish/LaTex/Manuscripts/GREEN.pdf', pointsize = 20)
+pdf('../figs/GREEN.pdf', pointsize = 20)
 plot.gbm2(kang.brt, i.var=2, type="response", ylab="KANGAROO OCCURRENCE", xlab="GREEN", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()
 
-pdf('/home/casey/Research/Projects/EGK_Collisions/Publish/LaTex/Manuscripts/ELEV.pdf', pointsize = 20)
+pdf('../figs/ELEV.pdf', pointsize = 20)
 plot.gbm2(kang.brt, i.var=1, type="response", ylab="KANGAROO OCCURRENCE", xlab="ELEV", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()
 
-pdf('/home/casey/Research/Projects/EGK_Collisions/Publish/LaTex/Manuscripts/PRECDM.pdf', pointsize = 20)
+pdf('../figs/PRECDM.pdf', pointsize = 20)
 plot.gbm2(kang.brt, i.var=5, type="response", ylab="KANGAROO OCCURRENCE", xlab="PRECDM", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()

@@ -16,9 +16,9 @@ con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres1
     return(round(roc, 4))
   }
 
-model.data <- read.delim("Data/model_data_coll.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
+model.data <- read.delim("../data/model_data_coll.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
 
-model.preds <- raster("/home/casey/Research/Projects/SDMs/Data/Preds/EGK.tif")
+model.preds <- raster("../output/EGK_preds.tif")
 
 samples.df <- extract(model.preds,model.data[,6:7])
 
@@ -63,7 +63,7 @@ paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$devianc
 # 
 # Number of Fisher Scoring iterations: 8
 
-val.data <- read.delim("Data/model_data_coll2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
+val.data <- read.delim("../data/model_data_coll2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
 
 samples.df <- extract(model.preds,val.data[,7:8])
 
@@ -127,7 +127,7 @@ coll.preds <- as.data.frame(cbind(indep.data$UID,glm.preds))  #Combine predictio
 
 names(coll.preds) <- c("UID","COLL")  #Rename columns in dataframe
 
-write.csv(coll.preds, file = "Pred/coll_preds.csv", row.names=FALSE)  #Write out predictions for all road segments
+write.csv(coll.preds, file = "../output/coll_preds.csv", row.names=FALSE)  #Write out predictions for all road segments
 
 names(coll.preds) <- c("uid","coll")
 
