@@ -46,7 +46,7 @@ kang.brt = gbm.step(data = model.data, gbm.x = 4:10, gbm.y = 3, family = "bernou
 
 brt.preds <- predict(vars, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps
 
-writeRaster(brt.preds, filename="../output/EGK_preds.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
+writeRaster(brt.preds, filename="../output/egk_preds.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
 
 plot(brt.preds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
 
@@ -64,6 +64,6 @@ vars.aus <- stack(mget(ascii.names)) #Combine all maps to single stack
 
 brt.AUSpreds <- predict(vars.aus, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps - this takes some time...
 
-writeRaster(brt.AUSpreds, filename="../output/EGK_preds-AUS.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
+writeRaster(brt.AUSpreds, filename="../output/egk_preds-AUS.asc", format="ascii", overwrite=TRUE) #Write out prediction map in ASCII format
 
 plot(brt.AUSpreds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme

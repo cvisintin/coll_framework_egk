@@ -18,25 +18,25 @@ con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres1
 
 model.data <- read.delim("../data/model_data_coll.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
 
-model.preds <- raster("../output/EGK_preds.tif")
+model.preds <- raster("../output/egk_preds.tif")
 
 samples.df <- extract(model.preds,model.data[,6:7])
 
-model.data$EGK <- samples.df
+model.data$egk <- samples.df
 
 model.data <- na.omit(model.data)
 
 #Calculate natural logarithm of each covariate to test multiplicative effect of linear relationship
-model.data$log.EGK <- log(model.data$EGK)
-model.data$log.TVOL <- log(model.data$TVOL)
-model.data$log.TSPD <- log(model.data$TSPD)
+model.data$log.egk <- log(model.data$egk)
+model.data$log.tvol <- log(model.data$tvol)
+model.data$log.tspd <- log(model.data$tspd)
 
 #Center logged covariates by subtracting means
-model.data$c.log.EGK <- model.data$log.EGK - mean(model.data$log.EGK)
-model.data$c.log.TVOL <- model.data$log.TVOL - mean(model.data$log.TVOL)
-model.data$c.log.TSPD <- model.data$log.TSPD - mean(model.data$log.TSPD)
+model.data$c.log.egk <- model.data$log.egk - mean(model.data$log.egk)
+model.data$c.log.tvol <- model.data$log.tvol - mean(model.data$log.tvol)
+model.data$c.log.tspd <- model.data$log.tspd - mean(model.data$log.tspd)
 
-coll.glm <- glm(formula = COLL ~ c.log.EGK + c.log.TVOL+ c.log.TSPD, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
+coll.glm <- glm(formula = coll ~ c.log.egk + c.log.tvol+ c.log.tspd, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
 
 summary(coll.glm)  #Examine fit of regression model
 
@@ -49,9 +49,9 @@ paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$devianc
 # Coefficients:
 #   Estimate Std. Error z value Pr(>|z|)    
 # (Intercept) -0.96239    0.05416 -17.770  < 2e-16 ***
-#   c.log.EGK    0.48298    0.03803  12.700  < 2e-16 ***
-#   c.log.TVOL   0.14447    0.04333   3.334 0.000856 ***
-#   c.log.TSPD   3.96940    0.27494  14.437  < 2e-16 ***
+#   c.log.egk    0.48298    0.03803  12.700  < 2e-16 ***
+#   c.log.tvol   0.14447    0.04333   3.334 0.000856 ***
+#   c.log.tspd   3.96940    0.27494  14.437  < 2e-16 ***
 #   ---
 #   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
@@ -67,25 +67,25 @@ val.data <- read.delim("../data/model_data_coll2.csv", header=T, sep=",")  #Read
 
 samples.df <- extract(model.preds,val.data[,7:8])
 
-val.data$EGK <- samples.df
+val.data$egk <- samples.df
 
 val.data <- na.omit(val.data)
 
 anova(coll.glm)  #Examine contribution of variables 
 
 #Calculate natural logarithm of each covariate
-val.data$log.EGK <- log(val.data$EGK)
-val.data$log.TVOL <- log(val.data$TVOL)
-val.data$log.TSPD <- log(val.data$TSPD)
+val.data$log.egk <- log(val.data$egk)
+val.data$log.tvol <- log(val.data$tvol)
+val.data$log.tspd <- log(val.data$tspd)
 
 #Center logged covariates by subtracting means to match covariates used in regression model
-val.data$c.log.EGK <- val.data$log.EGK - mean(val.data$log.EGK)
-val.data$c.log.TVOL <- val.data$log.TVOL - mean(val.data$log.TVOL)
-val.data$c.log.TSPD <- val.data$log.TSPD - mean(val.data$log.TSPD)
+val.data$c.log.egk <- val.data$log.egk - mean(val.data$log.egk)
+val.data$c.log.tvol <- val.data$log.tvol - mean(val.data$log.tvol)
+val.data$c.log.tspd <- val.data$log.tspd - mean(val.data$log.tspd)
 
 val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
 
-roc.val <- roc(val.data$COLL, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
+roc.val <- roc(val.data$coll, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
 
 # dbGetQuery(con,"
 # ALTER TABLE  gis_victoria.vic_gda9455_roads_state ADD COLUMN egk double precision;
@@ -107,25 +107,25 @@ indep.data <- dbGetQuery(con,"SELECT uid, egk, tvol, tspd FROM gis_victoria.vic_
 
 #indep.data <- read.delim("Data/VIC_GDA9455_ROADS_VICSTATE_GRID_CLIP_RISKMODEL.csv", header=T, sep=",")  #Read in covariate data for all road segments
 
-colnames(indep.data) <- c("UID","EGK","TVOL","TSPD")
+colnames(indep.data) <- c("uid","egk","tvol","tspd")
 
 indep.data <- na.omit(indep.data)  #Remove any records with missing information
 
 #Calculate natural logarithm of each covariate
-indep.data$log.EGK <- log(indep.data$EGK)
-indep.data$log.TVOL <- log(indep.data$TVOL)
-indep.data$log.TSPD <- log(indep.data$TSPD)
+indep.data$log.egk <- log(indep.data$egk)
+indep.data$log.tvol <- log(indep.data$tvol)
+indep.data$log.tspd <- log(indep.data$tspd)
 
 #Center logged covariates by subtracting means to match covariates used in regression mode
-indep.data$c.log.EGK <- indep.data$log.EGK - mean(indep.data$log.EGK)
-indep.data$c.log.TVOL <- indep.data$log.TVOL - mean(indep.data$log.TVOL)
-indep.data$c.log.TSPD <- indep.data$log.TSPD - mean(indep.data$log.TSPD)
+indep.data$c.log.egk <- indep.data$log.egk - mean(indep.data$log.egk)
+indep.data$c.log.tvol <- indep.data$log.tvol - mean(indep.data$log.tvol)
+indep.data$c.log.tspd <- indep.data$log.tspd - mean(indep.data$log.tspd)
 
 glm.preds <- predict(coll.glm, indep.data, type="response")  #Predict collision probability to all road segments using model fit
 
-coll.preds <- as.data.frame(cbind(indep.data$UID,glm.preds))  #Combine predictions with unique IDs for all road segments
+coll.preds <- as.data.frame(cbind(indep.data$uid,glm.preds))  #Combine predictions with unique IDs for all road segments
 
-names(coll.preds) <- c("UID","COLL")  #Rename columns in dataframe
+names(coll.preds) <- c("uid","coll")  #Rename columns in dataframe
 
 write.csv(coll.preds, file = "../output/coll_preds.csv", row.names=FALSE)  #Write out predictions for all road segments
 

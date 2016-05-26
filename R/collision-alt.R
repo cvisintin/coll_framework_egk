@@ -62,16 +62,16 @@ samples.df <- extract(vars,coord) #Sample covariates at coordinates
 
 model.data <- cbind(model.data,samples.df) #Combine presence/absence data with covariate values
 
-model.data$RDCLASS <- factor(model.data$RDCLASS, levels = 0:5)
+model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)
 
 samples.df <- extract(model.preds,model.data[,7:8])
 
-model.data$EGK <- samples.df
+model.data$egk <- samples.df
 
 model.data <- na.omit(model.data)
 
 
-coll.glm <- glm(formula = COLL ~ ELEV + GREEN + INCOMEPP + KMTOCZ + KMTOHWY + KMTORZ + LIGHT + MNTEMPWQ + POPDENS + PRECDM + RDCLASS + RDDENS + SLOPE + TREEDENS, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
+coll.glm <- glm(formula = coll ~ elev + green + incomepp + kmtocz + kmtohwy + kmtorz + light + mntempwq + popdens + precdm + rdclass + rddens + slope + treedens, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
 
 summary(coll.glm)  #Examine fit of regression model
 
@@ -84,24 +84,24 @@ paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$devianc
 # Coefficients:
 #   Estimate Std. Error z value Pr(>|z|)    
 # (Intercept) -4.0143204  0.7646073  -5.250 1.52e-07 ***
-#   ELEV         0.0013709  0.0005044   2.718  0.00657 ** 
-#   GREEN        1.7416404  0.7148008   2.437  0.01483 *  
-#   INCOMEPP     0.0912081  0.0152404   5.985 2.17e-09 ***
-#   KMTOCZ      -0.0036534  0.0030380  -1.203  0.22914    
-# KMTOHWY     -0.0150383  0.0099697  -1.508  0.13145    
-# KMTORZ      -0.0214754  0.0065530  -3.277  0.00105 ** 
-#   LIGHT       -0.0010587  0.0044874  -0.236  0.81349    
-# MNTEMPWQ     0.0281632  0.0380418   0.740  0.45910    
-# POPDENS     -0.0006680  0.0001516  -4.407 1.05e-05 ***
-#   PRECDM       0.0012606  0.0073383   0.172  0.86360    
-# RDCLASS1     0.0979980  0.2695348   0.364  0.71617    
-# RDCLASS2    -0.0183890  0.2653835  -0.069  0.94476    
-# RDCLASS3    -0.2786685  0.2601363  -1.071  0.28406    
-# RDCLASS4    -0.3996497  0.3032673  -1.318  0.18757    
-# RDCLASS5    -1.4718125  0.2559747  -5.750 8.93e-09 ***
-#   RDDENS      -0.0476203  0.0195999  -2.430  0.01511 *  
-#   SLOPE        0.0158984  0.0159683   0.996  0.31943    
-# TREEDENS     0.1389287  0.2743119   0.506  0.61253    
+#   elev         0.0013709  0.0005044   2.718  0.00657 ** 
+#   green        1.7416404  0.7148008   2.437  0.01483 *  
+#   incomepp     0.0912081  0.0152404   5.985 2.17e-09 ***
+#   kmtocz      -0.0036534  0.0030380  -1.203  0.22914    
+# kmtohwy     -0.0150383  0.0099697  -1.508  0.13145    
+# kmtorz      -0.0214754  0.0065530  -3.277  0.00105 ** 
+#   light       -0.0010587  0.0044874  -0.236  0.81349    
+# mntempwq     0.0281632  0.0380418   0.740  0.45910    
+# popdens     -0.0006680  0.0001516  -4.407 1.05e-05 ***
+#   precdm       0.0012606  0.0073383   0.172  0.86360    
+# rdclass1     0.0979980  0.2695348   0.364  0.71617    
+# rdclass2    -0.0183890  0.2653835  -0.069  0.94476    
+# rdclass3    -0.2786685  0.2601363  -1.071  0.28406    
+# rdclass4    -0.3996497  0.3032673  -1.318  0.18757    
+# rdclass5    -1.4718125  0.2559747  -5.750 8.93e-09 ***
+#   rddens      -0.0476203  0.0195999  -2.430  0.01511 *  
+#   slope        0.0158984  0.0159683   0.996  0.31943    
+# treedens     0.1389287  0.2743119   0.506  0.61253    
 # ---
 #   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
@@ -117,7 +117,7 @@ anova <- anova(coll.glm)
 anova[,2]/(anova[1,4]-anova[15,4])
 
 val.data <- read.delim("../data/model_data_coll_class2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
-val.data$RDCLASS <- as.factor(val.data$RDCLASS)
+val.data$rdclass <- as.factor(val.data$rdclass)
 
 val.coord <- val.data[,7:8] #Extract coordinates for sampling
 
@@ -128,12 +128,12 @@ val.data <- na.omit(val.data) #Remove any records with missing information
 
 val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
 
-roc.val <- roc(val.data$COLL, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
+roc.val <- roc(val.data$coll, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
 
 
 ####### Latex Output - Not required for Manuscript #######
 
-x.names <- c("\\emph{Intercept}","ELEV","GREEN","INCOMEPP","KMTOCZ","KMTOHWY","KMTORZ","LIGHT","MNTEMPWQ","POPDENS","PRECDM","RDCLASS1","RDCLASS2","RDCLASS3","RDCLASS4","RDCLASS5","RDDENS","SLOPE","TREEDENS")
+x.names <- c("\\emph{Intercept}","elev","green","incomepp","kmtocz","kmtohwy","kmtorz","light","mntempwq","popdens","precdm","rdclass1","rdclass2","rdclass3","rdclass4","rdclass5","rddens","slope","treedens")
 x.coef <- as.numeric(round(coef(summary(coll.glm))[,1],digits=4))
 x.se <- as.numeric(round(coef(summary(coll.glm))[,2],digits=4))
 x.zvalue <- as.numeric(round(coef(summary(coll.glm))[,3],digits=4))
