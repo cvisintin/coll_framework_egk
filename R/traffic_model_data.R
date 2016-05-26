@@ -5,6 +5,9 @@ require("doMC")
 drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
 con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
 
+dbGetQuery(con,"VACUUM ANALYZE gis_victoria.vic_gda9455_roads_state")
+
+
 rds.count <- dbGetQuery(con,"
   SELECT
     Max(uid)
@@ -39,6 +42,7 @@ setkey(RDCLASS,uid)
 
 
 registerDoMC(cores=detectCores()-1)
+system.time(
 RDDENS <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .combine=rbind) %dopar% {
   drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
   con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
@@ -47,14 +51,15 @@ RDDENS <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .
     p.uid AS uid, (Sum(ST_Length(ST_Intersection(ST_Buffer(ST_ClosestPoint(p.geom, ST_Centroid(p.geom)),564),r.geom)))/1000) AS rddens
   FROM
 	  gis_victoria.vic_gda9455_roads_state AS r,
-	  (SELECT uid, geom FROM gis_victoria.vic_gda9455_roads_state WHERE r.uid BETWEEN ",range(chunks[i])[1]," AND ",range(chunks[i])[2],") AS p
+	  (SELECT uid, geom FROM gis_victoria.vic_gda9455_roads_state WHERE uid BETWEEN ",range(chunks[i])[1]," AND ",range(chunks[i])[2],") AS p
   WHERE
     ST_DWithin(p.geom, r.geom, 564)
   GROUP BY
     p.uid
   "))
   temp
-})#~XXX second query
+})#~2400 second query
+)
 setkey(RDDENS,uid)
 
 # SELECT
@@ -68,7 +73,6 @@ setkey(RDDENS,uid)
 # ST_DWithin(p.geom, r.geom, 564)
 # GROUP BY
 # p.uid
-
 
 
 registerDoMC(cores=detectCores()-1)
@@ -157,6 +161,6 @@ AADT <- as.data.table(dbGetQuery(con,"
 setkey(AADT,uid)
 
 
-merged.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(XY,AADT,SPEEDLMT,RDCLASS,KMTOHWY,KMTODEV,POPDENS,INCOMEPP))
+merged.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(XY,AADT,SPEEDLMT,RDCLASS,RDDENS,KMTOHWY,KMTODEV,POPDENS,INCOMEPP))
 
 write.csv(merged.data, "data/model_data_traffic.csv", row.names=FALSE)
