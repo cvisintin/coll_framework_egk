@@ -1,8 +1,8 @@
-model.data <- read.delim("../data/model_data_speed.csv", header=T, sep=",")  #Read in posted speed data for road segments
+model.data <- read.delim("../data/model_data_traffic.csv", header=T, sep=",")  #Read in posted speed data for road segments
 
 model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)  #Define road class covariate as a factor with six levels
 
-speed.lm <- lm(formula = speedlmt ~ rdclass + rddens, data = model.data)  #Fit regression model
+speed.lm <- lm(formula = speedlmt ~ rdclass + rddens, data = na.omit(model.data[!is.na(model.data$speedlmt),]))  #Fit regression model
 
 #RF
 speed.rf <- randomForest(formula = speedlmt ~ rdclass + rddens + X + Y, data = model.data)  #Fit random forest model
