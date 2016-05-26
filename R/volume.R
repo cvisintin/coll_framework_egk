@@ -1,8 +1,12 @@
-model.data <- read.delim("../data/model_data_volume.csv", header=T, sep=",")  #Read in traffic volume data for road segments
+model.data <- read.delim("data/model_data_traffic.csv", header=T, sep=",")  #Read in traffic volume data for road segments
 
 model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)  #Define road class covariate as a factor with six levels
 
-trans.lglm <- lm(formula = log(aadt) ~ incomepp + kmtocz + kmtohwy + kmtorz + popdens + rddens + rdclass, data = model.data)  #Fit regression model
+model.data$popdensl <- model.data$popdens
+model.data$popdensl[model.data$popdensl==0] <- .0001
+model.data$popdensl <- log(model.data$popdensl)
+
+trans.lglm <- lm(formula = log(aadt) ~ popdensl + kmtohwy + kmtodev + rddens + rdclass, data = model.data[!is.na(model.data$aadt),])  #Fit regression model
 
 #RF
 set.seed(123)
