@@ -1,153 +1,123 @@
-require(mapdata)
-require(maptools)
-require(scales)
-require(rgdal)
-require(raster)
-require(spdep)
-require(gbm)
+library("data.table")
+library("raster")
 
 #Define function for receiver operator characteristic (ROC)
 "roc" <- function (obsdat, preddat){
-    if (length(obsdat) != length(preddat)) 
-      stop("obs and preds must be equal lengths")
-    n.x <- length(obsdat[obsdat == 0])
-    n.y <- length(obsdat[obsdat == 1])
-    xy <- c(preddat[obsdat == 0], preddat[obsdat == 1])
-    rnk <- rank(xy)
-    roc <- ((n.x * n.y) + ((n.x * (n.x + 1))/2) - sum(rnk[1:n.x]))/(n.x * n.y)
-    return(round(roc, 4))
-  }
+  if (length(obsdat) != length(preddat)) 
+    stop("obs and preds must be equal lengths")
+  n.x <- length(obsdat[obsdat == 0])
+  n.y <- length(obsdat[obsdat == 1])
+  xy <- c(preddat[obsdat == 0], preddat[obsdat == 1])
+  rnk <- rank(xy)
+  roc <- ((n.x * n.y) + ((n.x * (n.x + 1))/2) - sum(rnk[1:n.x]))/(n.x * n.y)
+  return(round(roc, 4))
+}
 
-model.data <- read.delim("../data/model_data_coll_class.csv", header=T, sep=",")  #Read in collision data training set (presences/absences of collisions and covariates)
+roads.alt <- as.data.table(read.csv("data/vic_model_data_traffic.csv"))#Read in collision data training set (presences/absences of collisions and covariates)
+setkey(roads.alt, uid)
 
-victoria <- readShapePoly("../data/VIC_GDA9455_ADMIN_STATE_EXP500M.shp") #Read in shapefile for study area boundary
+grid.files <- list.files(path='data/grids/envi') #Create vector of filenames
 
-r <- raster(ncol=822, nrow=563, xmn=-58000, xmx=764000, ymn=5661000, ymx=6224000) #Create raster template to define extents and resolution of maps
+grid.names <- substring(unlist(strsplit(grid.files,"\\_1000."))[(1:(2*(length(grid.files)))*2)-1][1:length(grid.files)],18) #Create vector of covariate names
 
-vic.rst <- rasterize(victoria, r, 'UFI') #Rasterize shapefile for use in raster calculations
+vic.rst <- raster("data/grids/VIC_GDA9455_GRID_STATE_1000.tif")
 
 clip <- extent(-58000, 764000, 5661000, 6224000) #Define clipping extent of maps
 
-ascii.files1 <- list.files(path='../data/grids/envi') #Create vector of filenames
-
-ascii.names1 <- unlist(strsplit(ascii.files1,"\\."))[(1:(2*(length(ascii.files1)))*2)-1][1:length(ascii.files1)] #Create vector of covariate names
-
-#Read in ASCII grids, crop, and multiply with template to create consistent covariate maps
-for (i in 1:length(ascii.files1)) {
-  temp <- raster(paste0("../data/grids/envi",ascii.files1[i]))
+#Read in grids, crop, and multiply with template to create consistent covariate maps
+for (i in 1:length(grid.files)) {
+  temp <- raster(paste0("data/grids/envi/",grid.files[i]))
   temp <- crop(temp, clip)
-  assign(ascii.names1[i],temp * vic.rst)
+  assign(grid.names[i],temp * vic.rst)
 }
+vars <- stack(mget(grid.names)) #Combine all maps to single stack
 
-ascii.files2 <- list.files(path='../data/grids/anth') #Create vector of filenames
+samples.df <- extract(vars,roads.alt[,.(x,y)]) #Sample covariates at coordinates
 
-ascii.names2 <- unlist(strsplit(ascii.files2,"\\."))[(1:(2*(length(ascii.files2)))*2)-1][1:length(ascii.files2)] #Create vector of covariate names
+colnames(samples.df) <- tolower(colnames(samples.df))
 
-#Read in ASCII grids, crop, and multiply with template to create consistent covariate maps
-for (i in 1:length(ascii.files2)) {
-  temp <- raster(paste0("../data/grids/anth",ascii.files2[i]))
-  temp <- crop(temp, clip)
-  assign(ascii.names2[i],temp * vic.rst)
-}
+cov.data.alt <- cbind(roads.alt,samples.df) #Combine occurrence data with covariate values
 
-ascii.names <- c(ascii.names1, ascii.names2) #Combine both sets of variables
+setkey(cov.data.alt, uid)
 
-vars <- stack(mget(ascii.names)) #Combine all maps to single stack
+#cov.data.alt$rdclass <- factor(cov.data.alt$rdclass, levels = 0:5)
 
-setwd('../../') #Change working directory to top level
+cov.data.alt$aadt <- NULL
+cov.data.alt$speedlmt <- NULL
 
-coord <- model.data[,7:8] #Extract coordinates for sampling
+coll <- as.data.table(dbGetQuery(con,"
+  SELECT DISTINCT ON (p.id)
+    r.uid AS uid, CAST(1 AS INTEGER) AS coll
+	FROM
+    gis_victoria.vic_gda9455_roads_state as r,
+      (SELECT
+        id, geom
+      FROM
+        gis_victoria.vic_gda9455_fauna_wv
+      WHERE
+        species = 'Kangaroo -  Eastern Grey'
+      AND
+        cause = 'hit by vehicle'
+      AND
+        year < 2013) AS p
+  WHERE ST_DWithin(p.geom,r.geom,100)
+  ORDER BY p.id, ST_Distance(p.geom,r.geom)
+  "))
+setkey(coll,uid)
 
-samples.df <- extract(vars,coord) #Sample covariates at coordinates
+data1.alt <- merge(cov.data.alt, coll)
 
-model.data <- cbind(model.data,samples.df) #Combine presence/absence data with covariate values
+set.seed(123)
+data0.alt <- cbind(cov.data.alt[sample(seq(1:nrow(cov.data.alt)),2*nrow(data1.alt)),],"coll"=rep(0,2*nrow(data1.alt)))
 
-model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)
+model.data.alt <- rbind(data1.alt,data0.alt)
 
-samples.df <- extract(model.preds,model.data[,7:8])
+model.data.alt <- na.omit(model.data.alt)
 
-model.data$egk <- samples.df
+cor(model.data.alt[,.(elev,green,kmtodev,kmtohwy,light,mntempwq,popdens,precdm,rddens,slope,treedens,x,y)])
 
-model.data <- na.omit(model.data)
+coll.glm.alt <- glm(formula = coll ~ elev + green + kmtodev + kmtohwy + light + mntempwq + popdens + precdm + rdclass + rddens + slope + treedens, family=binomial(link = "cloglog"), data = model.data.alt)  #Fit regression model
 
+summary(coll.glm.alt)  #Examine fit of regression model
 
-coll.glm <- glm(formula = coll ~ elev + green + incomepp + kmtocz + kmtohwy + kmtorz + light + mntempwq + popdens + precdm + rdclass + rddens + slope + treedens, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
+paste("% Deviance Explained: ",round(((coll.glm.alt$null.deviance - coll.glm.alt$deviance)/coll.glm.alt$null.deviance)*100,2),sep="")  #Report reduction in deviance
 
-summary(coll.glm)  #Examine fit of regression model
+write.csv(signif(summary(coll.glm.alt)$coefficients, digits=4),"output/coll_glm_alt.csv",row.names=FALSE)
 
-paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$deviance)/coll.glm$null.deviance)*100,2),sep="")  #Report reduction in deviance
+write.csv(formatC(anova(coll.glm.alt)[2:13,2]/sum(anova(coll.glm.alt)[2:13,2]), format='f',digits=4),"output/coll_anova_alt.csv",row.names=FALSE)
 
-# Deviance Residuals: 
-#   Min       1Q   Median       3Q      Max  
-# -2.3459  -0.7313  -0.4645   0.8029   2.5166  
-# 
-# Coefficients:
-#   Estimate Std. Error z value Pr(>|z|)    
-# (Intercept) -4.0143204  0.7646073  -5.250 1.52e-07 ***
-#   elev         0.0013709  0.0005044   2.718  0.00657 ** 
-#   green        1.7416404  0.7148008   2.437  0.01483 *  
-#   incomepp     0.0912081  0.0152404   5.985 2.17e-09 ***
-#   kmtocz      -0.0036534  0.0030380  -1.203  0.22914    
-# kmtohwy     -0.0150383  0.0099697  -1.508  0.13145    
-# kmtorz      -0.0214754  0.0065530  -3.277  0.00105 ** 
-#   light       -0.0010587  0.0044874  -0.236  0.81349    
-# mntempwq     0.0281632  0.0380418   0.740  0.45910    
-# popdens     -0.0006680  0.0001516  -4.407 1.05e-05 ***
-#   precdm       0.0012606  0.0073383   0.172  0.86360    
-# rdclass1     0.0979980  0.2695348   0.364  0.71617    
-# rdclass2    -0.0183890  0.2653835  -0.069  0.94476    
-# rdclass3    -0.2786685  0.2601363  -1.071  0.28406    
-# rdclass4    -0.3996497  0.3032673  -1.318  0.18757    
-# rdclass5    -1.4718125  0.2559747  -5.750 8.93e-09 ***
-#   rddens      -0.0476203  0.0195999  -2.430  0.01511 *  
-#   slope        0.0158984  0.0159683   0.996  0.31943    
-# treedens     0.1389287  0.2743119   0.506  0.61253    
-# ---
-#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-# 
-# (Dispersion parameter for binomial family taken to be 1)
-# 
-# Null deviance: 2026.4  on 1514  degrees of freedom
-# Residual deviance: 1505.5  on 1496  degrees of freedom
-# AIC: 1543.5
-# 
-# Number of Fisher Scoring iterations: 7
+coll.ind <- as.data.table(dbGetQuery(con,"
+  SELECT DISTINCT ON (p.id)
+    r.uid AS uid, CAST(1 AS INTEGER) AS coll
+  FROM
+   gis_victoria.vic_gda9455_roads_state as r,
+   (SELECT
+     id, geom
+   FROM
+     gis_victoria.vic_gda9455_fauna_wv
+   WHERE
+     species = 'Kangaroo -  Eastern Grey'
+   AND
+     cause = 'hit by vehicle'
+   AND
+     year >= 2013) AS p
+   WHERE ST_DWithin(p.geom,r.geom,100)
+   ORDER BY p.id, ST_Distance(p.geom,r.geom)
+   ")) #~1 second query
+setkey(coll.ind,uid)
 
-anova <- anova(coll.glm)
-anova[,2]/(anova[1,4]-anova[15,4])
+data1v.alt <- merge(cov.data.alt, coll.ind)
 
-val.data <- read.delim("../data/model_data_coll_class2.csv", header=T, sep=",")  #Read in collision data test set (presences/absences of collisions and covariates for road segments) for validation
-val.data$rdclass <- as.factor(val.data$rdclass)
+set.seed(123)
+data0v.alt <- cbind(cov.data.alt[sample(seq(1:nrow(cov.data.alt)),2*nrow(data1v.alt)),],"coll"=rep(0,2*nrow(data1v.alt)))
 
-val.coord <- val.data[,7:8] #Extract coordinates for sampling
+val.data <- rbind(data1v.alt,data0v.alt)
+val.data <- na.omit(val.data)
 
-val.samples.df <- extract(vars,val.coord) #Sample covariates at coordinates
-
-val.data <- cbind(val.data,val.samples.df) #Combine presence/absence data with covariate values
-val.data <- na.omit(val.data) #Remove any records with missing information 
-
-val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
+val.pred.glm <- predict(coll.glm.alt, val.data, type="response")  #Make predictions with regression model fit
 
 roc.val <- roc(val.data$coll, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
 
-
-####### Latex Output - Not required for Manuscript #######
-
-x.names <- c("\\emph{Intercept}","elev","green","incomepp","kmtocz","kmtohwy","kmtorz","light","mntempwq","popdens","precdm","rdclass1","rdclass2","rdclass3","rdclass4","rdclass5","rddens","slope","treedens")
-x.coef <- as.numeric(round(coef(summary(coll.glm))[,1],digits=4))
-x.se <- as.numeric(round(coef(summary(coll.glm))[,2],digits=4))
-x.zvalue <- as.numeric(round(coef(summary(coll.glm))[,3],digits=4))
-x.prz <- as.numeric(signif(coef(summary(coll.glm))[,4],digits=3))
-x.anova <- c(NA,as.numeric(signif(round((anova(coll.glm)[c(2:11),2]/sum(anova(coll.glm)[2:15,2])),digits=3),digits=4)), as.numeric(signif(round(rep((anova(coll.glm)[12,2]/sum(anova(coll.glm)[2:15,2])),5),digits=3),digits=4)), as.numeric(signif(round((anova(coll.glm)[c(13:15),2]/sum(anova(coll.glm)[2:15,2])),digits=3),digits=4)))
-x.anova[c(1,13:16)] <- " "
-x.all <- data.frame(cbind("",x.names,as.numeric(x.coef),as.numeric(x.se),as.numeric(x.zvalue),as.numeric(x.prz),x.anova),stringsAsFactors=FALSE,row.names=NULL) 
-# x.all[,3] <- as.numeric(x.all[,3])
-# x.all[,4] <- as.numeric(x.all[,4])
-# x.all[,5] <- as.numeric(x.all[,5])
-# x.all[,6] <- as.numeric(x.all[,6])
-# x.all[,7] <- as.numeric(x.all[,7])
-colnames(x.all) <- c("","Variable","Coefficient","Std. Error","$Z\\text{-value}$","$\\PRZ$","ANOVA")
-
-str(x.all)
-
-print(xtable(x.all), include.rownames=FALSE, sanitize.text.function=function(x){x}, floating=FALSE, digits=c(0,0,3,3,3,2,4))
+set.seed(123)
+cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
+(cv.10.err <- cv.glm(model.data.alt, coll.glm.alt, cost=cost, K = 10)$delta)
