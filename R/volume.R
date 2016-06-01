@@ -1,16 +1,16 @@
-model.data <- read.delim("data/model_data_traffic.csv", header=T, sep=",")  #Read in traffic volume data for road segments
+library("data.table")
+
+model.data <- as.data.table(read.delim("data/vic_model_data_traffic.csv", header=T, sep=","))  #Read in traffic volume data for road segments
 
 model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)  #Define road class covariate as a factor with six levels
 
-model.data$popdensl <- model.data$popdens
-model.data$popdensl[model.data$popdensl==0] <- .0001
-model.data$popdensl <- log(model.data$popdensl)
+cor(na.omit(model.data[,.(popdens,kmtohwy,kmtodev,rddens)]))
 
-trans.lglm <- lm(formula = log(aadt) ~ popdensl + kmtohwy + kmtodev + rddens + rdclass, data = model.data[!is.na(model.data$aadt),])  #Fit regression model
+trans.lglm <- lm(formula = log(aadt) ~ popdens + kmtohwy + kmtodev + rddens + rdclass, data = model.data[!is.na(model.data$aadt),])  #Fit regression model
 
 #RF
 set.seed(123)
-trans.rf <- randomForest(formula = log(aadt) ~ incomepp + kmtodev + kmtohwy + popdens + rddens + rdclass + x + y, data = na.omit(model.data))  #Fit random forest model
+trans.rf <- randomForest(formula = log(aadt) ~ kmtodev + kmtohwy + popdens + rddens + rdclass + popdens, data = na.omit(model.data[!is.na(model.data$aadt),])) #Fit random forest model
 ##
 
 summary(trans.lglm) #Examine fit of regression model

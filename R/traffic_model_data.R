@@ -62,18 +62,6 @@ RDDENS <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .
 )
 setkey(RDDENS,uid)
 
-# SELECT
-# p.uid AS uid, (Sum(ST_Length(ST_Intersection(p.geom,r.geom)))/1000) AS rddens
-# FROM gis_victoria.vic_gda9455_roads_state AS r,
-# (SELECT
-#  uid, ST_Buffer(ST_ClosestPoint(geom, ST_Centroid(geom)),564) AS geom
-#  FROM
-#  gis_victoria.vic_gda9455_roads_state) AS p
-# WHERE
-# ST_DWithin(p.geom, r.geom, 564)
-# GROUP BY
-# p.uid
-
 
 registerDoMC(cores=detectCores()-1)
 KMTOHWY <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .combine=rbind) %dopar% {
@@ -129,7 +117,7 @@ setkey(INCOMEPP,uid)
 POPDENS <- as.data.table(dbGetQuery(con,"
   SELECT
     r.uid AS uid, p.popdens as popdens
-	FROM gis_victoria.vic_gda9455_demo_sa1_popdens AS p,
+	FROM gis_victoria.vic_gda9455_demo_popdens AS p,
 		(SELECT
       uid, ST_ClosestPoint(geom, ST_Centroid(geom)) AS geom
 		FROM
@@ -141,9 +129,9 @@ setkey(POPDENS,uid)
 
 SPEEDLMT <- as.data.table(dbGetQuery(con,"
   SELECT
-      r.uid as uid, mode() WITHIN GROUP (ORDER BY p.speeds) AS speedlmt
+      r.uid as uid, mode() WITHIN GROUP (ORDER BY p.speedlmt) AS speedlmt
 		FROM
-      gis_victoria.vic_gda9455_roads_state as r, gis_victoria.vic_gda9455_roads_allspeeds AS p
+      gis_victoria.vic_gda9455_roads_state as r, gis_victoria.vic_gda9455_roads_speeds_2014 AS p
     WHERE ST_DWithin(p.geom,r.geom,5)
     GROUP BY r.uid
   ")) #~10 second query
@@ -161,6 +149,8 @@ AADT <- as.data.table(dbGetQuery(con,"
 setkey(AADT,uid)
 
 
-merged.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(XY,AADT,SPEEDLMT,RDCLASS,RDDENS,KMTOHWY,KMTODEV,POPDENS,INCOMEPP))
+merged.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(XY,AADT,SPEEDLMT,RDCLASS,RDDENS,KMTOHWY,KMTODEV,POPDENS))
 
-write.csv(merged.data, "data/model_data_traffic.csv", row.names=FALSE)
+merged.data[is.na(popdens),popdens:=0]
+
+write.csv(merged.data, "data/vic_model_data_traffic.csv", row.names=FALSE)

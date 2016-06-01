@@ -1,4 +1,4 @@
-model.data <- read.delim("../data/model_data_traffic.csv", header=T, sep=",")  #Read in posted speed data for road segments
+model.data <- read.delim("../data/vic_model_data_traffic.csv", header=T, sep=",")  #Read in posted speed data for road segments
 
 model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)  #Define road class covariate as a factor with six levels
 
