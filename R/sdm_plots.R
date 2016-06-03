@@ -303,19 +303,17 @@ plot.gbm2 <- function (x, i.var = 1, n.trees = x$n.trees, continuous.resolution 
 }
 
 
-
-
-pdf('figs/light.pdf', pointsize = 20)
-plot.gbm(kang.brt, i.var=3, type="response", ylab="KANGAROO OCCURRENCE", xlab="LIGHT", yaxt="n", ylim=c(0,1))
+tiff('figs/light.tif', pointsize = 20)
+plot.gbm2(kang.brt, i.var=3, type="response", ylab="KANGAROO OCCURRENCE", xlab="LIGHT", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()
 
-pdf('figs/elev.pdf', pointsize = 20)
-plot.gbm(kang.brt, i.var=1, type="response", ylab="KANGAROO OCCURRENCE", xlab="ELEV", yaxt="n", ylim=c(0,1))
+tiff('figs/elev.tif', pointsize = 20)
+plot.gbm2(kang.brt, i.var=1, type="response", ylab="KANGAROO OCCURRENCE", xlab="ELEV", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()
 
-pdf('figs/precdm.pdf', pointsize = 20)
-plot.gbm(kang.brt, i.var=5, type="response", ylab="KANGAROO OCCURRENCE", xlab="PRECDM", yaxt="n", ylim=c(0,1))
+tiff('figs/precdm.tif', pointsize = 20)
+plot.gbm2(kang.brt, i.var=5, type="response", ylab="KANGAROO OCCURRENCE", xlab="PRECDM", yaxt="n", ylim=c(0,1))
 axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
 dev.off()
