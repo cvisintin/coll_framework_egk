@@ -1,4 +1,3 @@
-#Load in required packages
 require(maptools)
 require(scales)
 require(rgdal)
@@ -40,7 +39,7 @@ brt.preds <- predict(vars, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type=
 writeRaster(brt.preds, filename="output/egk_preds_brt.tif", format="GTiff", overwrite=TRUE) #Write out prediction map in tif format
 
 #Use system to translate and uplaod grid to postgis database
-system("raster2pgsql -I -M -s 28355 -t auto /home/casey/Research/Github/coll_framework_egk/output/egk_preds_brt.tif gis_victoria.vic_gda9455_grid_egk_preds_brt | PGPASSWORD=Qpostgres15 psql -d qaeco_spatial -h boab.qaeco.com -p 5432 -U qaeco -w")
+system("raster2pgsql -d -I -M -s 28355 -t auto /home/casey/Research/Github/coll_framework_egk/output/egk_preds_brt.tif gis_victoria.vic_gda9455_grid_egk_preds_brt | PGPASSWORD=Qpostgres15 psql -d qaeco_spatial -h boab.qaeco.com -p 5432 -U qaeco -w")
 
 plot(brt.preds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
 
