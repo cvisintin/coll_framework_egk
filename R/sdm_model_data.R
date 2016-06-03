@@ -1,4 +1,3 @@
-#Load in required packages
 require(maptools)
 require(scales)
 require(rgdal)
