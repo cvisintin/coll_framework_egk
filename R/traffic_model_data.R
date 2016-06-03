@@ -1,6 +1,6 @@
-require("RPostgreSQL")
-require("data.table")
-require("doMC")
+require(RPostgreSQL)
+require(data.table)
+require(doMC)
 
 drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
 con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab

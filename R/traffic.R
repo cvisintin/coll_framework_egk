@@ -1,8 +1,7 @@
-library("randomForest")
-library("data.table")
+require(randomForest)
+require(data.table)
 
 model.data <- as.data.table(read.delim("data/vic_model_data_traffic.csv", header=T, sep=","))  #Read in traffic volume data for road segments
-#model.data$rdclass <- factor(model.data$rdclass, levels = 0:5)  #Define road class covariate as a factor with six levels
 
 model.data[!is.na(aadt),.N]
 
@@ -18,6 +17,11 @@ cor(na.omit(model.data[,.(popdens,kmtohwy,kmtodev,rddens,x,y)]))
 set.seed(123)
 volume.rf <- randomForest(formula = log(aadt) ~ kmtodev + kmtohwy + popdens + rdclass + rddens, data = model.data[!is.na(model.data$aadt),], mtry=2, importance = TRUE, sampsize = 1000)  #Fit random forest model
 
+(volume.r2 <- rSquared(model.data[!is.na(model.data$aadt),aadt], model.data[!is.na(model.data$aadt),aadt] - exp(predict(volume.rf, model.data[!is.na(model.data$aadt),.(kmtodev,kmtohwy,popdens,rdclass,rddens)]))))
+(volume.mse <- mean((model.data[!is.na(model.data$aadt),aadt] - exp(predict(volume.rf, model.data[!is.na(model.data$aadt),.(kmtodev,kmtohwy,popdens,rdclass,rddens)])))^2))
+
+volume.rf$importance
+
 vol.preds <- predict(volume.rf, model.data, type="response")
 
 vol.preds.df <- cbind("uid"=model.data$uid,"tvol"=exp(vol.preds)) #Combine predictions with unique IDs for all road segments
@@ -29,6 +33,13 @@ perf.vol <- merge(vol.preds.dt,model.data[!is.na(model.data$aadt),])
 plot(perf.vol$aadt,perf.vol$tvol)
 abline(a=0,b=.5, lty=2)
 
+varImpPlot(volume.rf,type=2)
+
+importanceOrder=order(-volume.rf$importance)
+names=rownames(volume.rf$importance)[importanceOrder][1:15]
+for (name in names) partialPlot(volume.rf, model.data, eval(name), main=name, xlab=name)
+
+
 # speed.lm <- lm(speedlmt ~ rdclass + rddens, data = model.data[!is.na(model.data$speedlmt),])
 # 
 # speed.preds <- predict(speed.lm, model.data, type="response")
@@ -36,6 +47,8 @@ abline(a=0,b=.5, lty=2)
 
 set.seed(123)
 speed.rf <- randomForest(formula = speedlmt ~ rdclass + rddens, data = model.data[!is.na(model.data$speedlmt),], mtry=2, importance = TRUE, sampsize = 1000)  #Fit random forest model
+
+speed.rf$importance
 
 speed.preds <- predict(speed.rf, model.data, type="response")
 
@@ -102,6 +115,3 @@ abline(a=0,b=.5, lty=2)
 # names(speed.preds.df) <- c("uid","tspd")
 # 
 # write.csv(speed.preds.df, file = "output/tspd_preds_rf.csv")
-
-
-for(i in 1:5) partialPlot(volume.rf,X,x.var=names(X)[i])
