@@ -1,6 +1,7 @@
-library("RPostgreSQL")
-library("data.table")
-library("raster")
+require(RPostgreSQL)
+require(data.table)
+require(raster)
+require(boot)
 
 drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
 con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
@@ -89,24 +90,36 @@ model.data <- rbind(data1,data0)
 model.data <- na.omit(model.data)
 
 #Calculate natural logarithm of each covariate to test multiplicative effect of linear relationship
-model.data$log.egk <- log(model.data$egk)
-model.data$log.tvol <- log(model.data$tvol)
-model.data$log.tspd <- log(model.data$tspd)
+#model.data$log.egk <- log(model.data$egk)
+#model.data$log.tvol <- log(model.data$tvol)
+#model.data$log.tspd <- log(model.data$tspd)
 
 #Center logged covariates by subtracting means
-model.data$c.log.egk <- model.data$log.egk - mean(model.data$log.egk)
-model.data$c.log.tvol <- model.data$log.tvol - mean(model.data$log.tvol)
-model.data$c.log.tspd <- model.data$log.tspd - mean(model.data$log.tspd)
+#model.data$c.log.egk <- model.data$log.egk - mean(model.data$log.egk)
+#model.data$c.log.tvol <- model.data$log.tvol - mean(model.data$log.tvol)
+#model.data$c.log.tspd <- model.data$log.tspd - mean(model.data$log.tspd)
 
-coll.glm <- glm(formula = coll ~ c.log.egk + c.log.tvol+ c.log.tspd, family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
+coll.glm <- glm(formula = coll ~ log(egk) + log(tvol) + log(tspd), family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
 
 summary(coll.glm)  #Examine fit of regression model
 
 paste("% Deviance Explained: ",round(((coll.glm$null.deviance - coll.glm$deviance)/coll.glm$null.deviance)*100,2),sep="")  #Report reduction in deviance
 
-write.csv(signif(summary(coll.glm)$coefficients, digits=4),"output/coll_glm.csv",row.names=FALSE)
+write.csv(signif(summary(coll.glm)$coefficients, digits=4),"output/coll_coef.csv",row.names=FALSE)
 
 write.csv(formatC(anova(coll.glm)[2:4,2]/sum(anova(coll.glm)[2:4,2]), format='f',digits=4),"output/coll_anova.csv",row.names=FALSE)
+
+save(coll.glm,file="output/coll_glm")
+
+save(model.data,file="output/coll_model_data")
+
+coll.preds <- predict(coll.glm, cov.data, type="response")
+
+coll.preds.df <- cbind("uid"=cov.data$uid,"collrisk"=coll.preds) #Combine predictions with unique IDs for all road segments
+coll.preds.df <- na.omit(coll.preds.df)
+
+write.csv(coll.preds.df, file = "output/coll_preds_glm.csv", row.names=FALSE)
+
 
 coll.ind <- as.data.table(dbGetQuery(con,"
   SELECT DISTINCT ON (p.id)
@@ -122,7 +135,9 @@ coll.ind <- as.data.table(dbGetQuery(con,"
       AND
         cause = 'hit by vehicle'
       AND
-        year >= 2013) AS p
+        year >= 2013
+      AND
+        year != 2014) AS p
   WHERE ST_DWithin(p.geom,r.geom,100)
   ORDER BY p.id, ST_Distance(p.geom,r.geom)
   ")) #~1 second query
@@ -131,7 +146,7 @@ setkey(coll.ind,uid)
 data1v <- merge(cov.data, coll.ind)
 
 set.seed(123)
-data0v <- cbind(cov.data[sample(seq(1:nrow(cov.data)),1*nrow(data1v)),],"coll"=rep(0,1*nrow(data1v)))
+data0v <- cbind(cov.data[sample(seq(1:nrow(cov.data)),2*nrow(data1v)),],"coll"=rep(0,2*nrow(data1v)))
 
 val.data <- rbind(data1v,data0v)
 val.data <- na.omit(val.data)
@@ -153,3 +168,57 @@ roc.val <- roc(val.data$coll, val.pred.glm)  #Compare collision records to predi
 set.seed(123)
 cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
 (cv.10.err <- cv.glm(model.data, coll.glm, cost=cost, K = 10)$delta)
+
+require(loo)
+require(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores()-1)
+
+N <- nrow(model.data)
+y <- model.data$coll
+x1 <- model.data$log.egk
+x2 <- model.data$log.tvol
+x3 <- model.data$log.tspd
+
+scode <- "
+data{
+int<lower=1> N;
+int<lower=0,upper=1> y[N];
+real x1[N];
+real x2[N];
+real x3[N];
+}
+parameters{
+real a;
+real b1;
+real b2;
+real b3;
+}
+transformed parameters {
+  real p[N];
+  for (i in 1:N)
+    p[i] <- inv_cloglog(a + b1 * x1[i] + b2 * x2[i] + b3 * x3[i]);
+}
+model{
+b3 ~ normal( 0 , 1 );
+b2 ~ normal( 0 , 1 );
+b1 ~ normal( 0 , 1 );
+a ~ normal( 0 , 1 );
+y ~ binomial( 1 , p );
+}
+generated quantities{
+real log_lik[N];
+real yhat[N];
+for (i in 1:N) {
+    log_lik[i] <- y[i]*log(p[i]) + (1-y[i])*log(1-p[i]);  
+    yhat[i] <- p[i]*1;
+  }
+}
+"
+
+coll_model_fit <- stan(model_code = scode, iter = 1000, chains = 3, cores = 3, seed=123)
+#summary(coll_model_fit)
+traceplot(coll_model_fit,pars=c("a","b1","b2","b3"))
+
+log_lik_coll <- extract_log_lik(coll_model_fit)
+loo_coll <- loo(log_lik_coll)
