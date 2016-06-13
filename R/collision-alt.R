@@ -222,3 +222,44 @@ log_lik_coll.alt <- extract_log_lik(coll_model_fit.alt)
 loo_coll.alt <- loo(log_lik_coll.alt)
 
 diff <- compare(loo_coll, loo_coll.alt)
+
+require(rethinking)
+
+set.seed(123) 
+coll.map.alt <- map(
+  alist(
+    y ~ dbinom(1,p), 
+    p <- 1 - exp(-exp(a + b1*(x1/1000) + b2*x2 + b3*x3 + b4*x4 + b5*x5 + b6*x6 + b7*(x7/10000) + b8*x8 + b9*x9 + b10*x10 + b11*x11 + b12*x12)),
+    a ~ dnorm(0,100),
+    b1 ~ dnorm(0,1),
+    b2 ~ dnorm(0,1),
+    b3 ~ dnorm(0,1),
+    b4 ~ dnorm(0,1),
+    b5 ~ dnorm(0,1),
+    b6 ~ dnorm(0,1),
+    b7 ~ dnorm(0,1),
+    b8 ~ dnorm(0,1),
+    b9 ~ dnorm(0,1),
+    b10 ~ dnorm(0,1),
+    b11 ~ dnorm(0,1),
+    b12 ~ dnorm(0,1)
+  ),
+  start=list(a=0.5,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,b7=0,b8=0,b9=0,b10=0,b11=0,b12=0),
+  data=list(y=model.data.alt$coll,
+            x1=model.data.alt$elev,
+            x2=model.data.alt$green,
+            x3=model.data.alt$kmtodev,
+            x4=model.data.alt$kmtohwy,
+            x5=model.data.alt$light,
+            x6=model.data.alt$mntempwq,
+            x7=model.data.alt$popdens,
+            x8=model.data.alt$precdm,
+            x9=model.data.alt$rdclass,
+            x10=model.data.alt$rddens,
+            x11=model.data.alt$slope,
+            x12=model.data.alt$treedens)
+)
+precis(coll.map.alt)
+WAIC(coll.map.alt)
+
+plot(rethinking::compare(coll.map,coll.map.alt))

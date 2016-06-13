@@ -37,7 +37,7 @@ cov.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(roads,tvol.preds,t
 
 sdm.preds <- raster("output/egk_preds_brt.tif")
 
-cov.data$egk <- extract(sdm.preds,cov.data[,.(x,y)])
+cov.data$egk <- raster::extract(sdm.preds,cov.data[,.(x,y)])
 
 coll <- as.data.table(dbGetQuery(con,"
   SELECT DISTINCT ON (p.id)
@@ -222,3 +222,21 @@ traceplot(coll_model_fit,pars=c("a","b1","b2","b3"))
 
 log_lik_coll <- extract_log_lik(coll_model_fit)
 loo_coll <- loo(log_lik_coll)
+
+require(rethinking)
+
+set.seed(123) 
+coll.map <- map(
+  alist(
+    y ~ dbinom(1,p), 
+    p <- 1 - exp(-exp(a + b1*log(x1) + b2*log(x2) + b3*log(x3))),
+    a ~ dnorm(0,100),
+    b1 ~ dnorm(0,1),
+    b2 ~ dnorm(0,1),
+    b3 ~ dnorm(0,1)
+  ),
+  start=list(a=0.5,b1=0,b2=0,b3=0),
+  data=list(y=model.data$coll,x1=model.data$egk,x2=model.data$tvol,x3=model.data$tspd)
+)
+precis(coll.map)
+WAIC(coll.map)
