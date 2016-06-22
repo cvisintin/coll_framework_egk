@@ -7,9 +7,9 @@ invcloglog <- function (x) {1-exp(-exp(x))}
 load("output/coll_glm")
 load("output/coll_model_data")
 
-ggplot <- function(...) { ggplot2::ggplot(...) + theme_bw() + ylab("LIKELIHOOD OF COLLISION") + theme(text = element_text(size=20)) + theme(legend.position="none") }
+ggplot <- function(...) { ggplot2::ggplot(...) + theme_bw() + ylab("LIKELIHOOD OF COLLISION") + theme(text = element_text(size=6)) + theme(legend.position="none") }
 
-tiff('figs/egk.tif', pointsize = 24)
+tiff('figs/egk.tif', pointsize = 6, compression = "lzw", res=300, width = 900, height = 900)
 ggplot(data = model.data) +
   geom_line(aes(x = egk, invcloglog(coef(coll.glm)[1] + coef(coll.glm)[2]*log(egk) + coef(coll.glm)[3]*mean(log(tvol)) + coef(coll.glm)[4]*mean(log(tspd)) ) ) ) +
   scale_x_continuous(limits = c(0,1), breaks = seq(0,1,.1)) +
@@ -31,7 +31,7 @@ ggplot(data = model.data) +
   )
 dev.off()
 
-tiff('figs/tvol.tif', pointsize = 24)
+tiff('figs/tvol.tif', pointsize = 6, compression = "lzw", res=300, width = 900, height = 900)
 ggplot(data = model.data) +
   geom_line(aes(x = tvol, invcloglog(coef(coll.glm)[1] + coef(coll.glm)[2]*mean(log(egk)) + coef(coll.glm)[3]*log(tvol) + coef(coll.glm)[4]*mean(log(tspd)) ) ) ) +
   scale_x_continuous(limits = c(0,12500), breaks = seq(0,12500,2500)) +
@@ -53,7 +53,7 @@ ggplot(data = model.data) +
   )
 dev.off()
 
-tiff('figs/tspd.tif', pointsize = 24)
+tiff('figs/tspd.tif', pointsize = 6, compression = "lzw", res=300, width = 900, height = 900)
 ggplot(data = model.data) +
   geom_line(aes(x = tspd, invcloglog(coef(coll.glm)[1] + coef(coll.glm)[2]*mean(log(egk)) + coef(coll.glm)[3]*mean(log(tvol)) + coef(coll.glm)[4]*log(tspd) ) ) ) +
   scale_x_continuous(limits = c(40,100), breaks = seq(40,100,10)) +
