@@ -151,15 +151,15 @@ data0v <- cbind(cov.data[sample(seq(1:nrow(cov.data)),2*nrow(data1v)),],"coll"=r
 val.data <- rbind(data1v,data0v)
 val.data <- na.omit(val.data)
 
-#Calculate natural logarithm of each covariate
-val.data$log.egk <- log(val.data$egk)
-val.data$log.tvol <- log(val.data$tvol)
-val.data$log.tspd <- log(val.data$tspd)
-
-#Center logged covariates by subtracting means to match covariates used in regression model
-val.data$c.log.egk <- val.data$log.egk - mean(val.data$log.egk)
-val.data$c.log.tvol <- val.data$log.tvol - mean(val.data$log.tvol)
-val.data$c.log.tspd <- val.data$log.tspd - mean(val.data$log.tspd)
+# #Calculate natural logarithm of each covariate
+# val.data$log.egk <- log(val.data$egk)
+# val.data$log.tvol <- log(val.data$tvol)
+# val.data$log.tspd <- log(val.data$tspd)
+# 
+# #Center logged covariates by subtracting means to match covariates used in regression model
+# val.data$c.log.egk <- val.data$log.egk - mean(val.data$log.egk)
+# val.data$c.log.tvol <- val.data$log.tvol - mean(val.data$log.tvol)
+# val.data$c.log.tspd <- val.data$log.tspd - mean(val.data$log.tspd)
 
 val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
 
