@@ -35,6 +35,8 @@ data1 <- dbGetQuery(con,paste0("
       AND
         pts.start_year >= '2000'
       AND
+        pts.start_year <= '2013'
+      AND
         sci_name = 'Macropus giganteus'
       GROUP BY
         pts.geom;
