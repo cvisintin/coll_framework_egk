@@ -137,13 +137,13 @@ options(mc.cores = parallel::detectCores()-1)
 
 N <- nrow(model.data.alt)
 y <- model.data.alt$coll
-x1 <- model.data.alt$elev
+x1 <- model.data.alt$elev/1000
 x2 <- model.data.alt$green
 x3 <- model.data.alt$kmtodev
 x4 <- model.data.alt$kmtohwy
 x5 <- model.data.alt$light
 x6 <- model.data.alt$mntempwq
-x7 <- model.data.alt$popdens
+x7 <- model.data.alt$popdens/10000
 x8 <- model.data.alt$precdm
 x9 <- model.data.alt$rdclass
 x10 <- model.data.alt$rddens
@@ -203,7 +203,6 @@ b1 ~ normal( 0 , 1 );
 a ~ normal( 0 , 1 );
 y ~ binomial( 1 , p );
 }
-"
 generated quantities{
 real log_lik[N];
 real yhat[N];
@@ -212,9 +211,9 @@ log_lik[i] <- y[i]*log(p[i]) + (1-y[i])*log(1-p[i]);
 yhat[i] <- p[i]*1;
 }
 }
+"
 
-
-coll_model_fit.alt <- stan(model_code = scode.alt, iter = 100, chains = 1, cores = 1, seed=123, init=100)
+coll_model_fit.alt <- stan(model_code = scode.alt, iter = 1000, chains = 3, cores = 3, seed=123, init=list(a=0.5,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,b7=0,b8=0,b9=0,b10=0,b11=0,b12=0))
 #summary(coll_model_fit)
 #traceplot(As.mcmc.list(coll_model_fit,c("a","b1","b2","b3")))
 
