@@ -1,10 +1,11 @@
-require(maptools)
-require(scales)
-require(rgdal)
 require(raster)
 require(gbm)
 require(dismo)
 require(data.table)
+require(RPostgreSQL)
+
+drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
+con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
 
 grid.files <- list.files(path='data/grids/envi') #Create vector of filenames
 
@@ -36,30 +37,16 @@ kang.brt = gbm.step(data = model.data, gbm.x = 4:10, gbm.y = 3, family = "bernou
 
 brt.preds <- predict(vars, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps
 
+save(brt.preds,file="output/egk_brt_preds")
+
 writeRaster(brt.preds, filename="output/egk_preds_brt.tif", format="GTiff", overwrite=TRUE) #Write out prediction map in tif format
 
-#Use system to translate and uplaod grid to postgis database
-system("raster2pgsql -d -I -M -s 28355 -t auto /home/casey/Research/Github/coll_framework_egk/output/egk_preds_brt.tif gis_victoria.vic_gda9455_grid_egk_preds_brt | PGPASSWORD=Qpostgres15 psql -d qaeco_spatial -h boab.qaeco.com -p 5432 -U qaeco -w")
+#Use system to translate and upload grid to postgis database
+system("raster2pgsql -d -I -M -s 28355 -t auto /home/casey/Research/Github/coll_framework_egk/output/egk_preds_brt.tif gis_victoria.vic_gda9455_grid_egk_preds_brt_orig | PGPASSWORD=Qpostgres15 psql -d qaeco_spatial -h boab.qaeco.com -p 5432 -U qaeco -w")
+
+dbWriteTable(con, c("gis_victoria", "vic_gda9455_grid_egk_preds_brt_orig"), value = brt.preds, row.names=FALSE, overwrite=TRUE)
 
 plot(brt.preds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
-
-########Plot Figures########
-
-tiff('figs/light.tif', pointsize = 20)
-gbm.plot.var(kang.brt, i.var=3, type="response", ylab="KANGAROO OCCURRENCE", xlab="LIGHT")
-#axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
-dev.off()
-
-tiff('figs/elev.tif', pointsize = 20)
-plot.gbm.var(kang.brt, i.var=1, type="response", ylab="KANGAROO OCCURRENCE", xlab="ELEV")
-#axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
-dev.off()
-
-tiff('figs/precdm.tif', pointsize = 20)
-plot.gbm.var(kang.brt, i.var=5, type="response", ylab="KANGAROO OCCURRENCE", xlab="PRECDM")
-#axis(2, at=seq(0.0,1.0,0.1), labels=seq(0.0,1.0,0.1))
-dev.off()
-
 
 ########Predict to Continental Scale########
 
@@ -78,7 +65,6 @@ brt.AUSpreds <- predict(vars.aus, kang.brt, n.trees=kang.brt$gbm.call$best.trees
 writeRaster(brt.AUSpreds, filename="output/egk_preds_brt-aus.tif", format="GTiff", overwrite=TRUE) #Write out prediction map in grid format
 
 plot(brt.AUSpreds, col=sdm.colors(100)) #Plot prediction map using red to white color scheme
-
 
 ########Collisions within EGK preds########
 

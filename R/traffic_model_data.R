@@ -7,7 +7,6 @@ con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres1
 
 dbGetQuery(con,"VACUUM ANALYZE gis_victoria.vic_gda9455_roads_state")
 
-
 rds.count <- dbGetQuery(con,"
   SELECT
     Max(uid)
@@ -18,7 +17,6 @@ rds.count <- dbGetQuery(con,"
 count.vec <- c(0:rds.count)
 
 chunks <- split(count.vec, ceiling(seq_along(count.vec)/100000))
-
 
 XY <- as.data.table(dbGetQuery(con,"
   SELECT
@@ -31,7 +29,6 @@ XY <- as.data.table(dbGetQuery(con,"
   ")) #~50 second query
 setkey(XY,uid)
 
-
 RDCLASS <- as.data.table(dbGetQuery(con,"
   SELECT
     uid, class_code AS rdclass
@@ -39,7 +36,6 @@ RDCLASS <- as.data.table(dbGetQuery(con,"
 	  gis_victoria.vic_gda9455_roads_state
   ")) #~20 second query
 setkey(RDCLASS,uid)
-
 
 registerDoMC(cores=detectCores()-1)
 system.time(
@@ -61,7 +57,6 @@ RDDENS <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .
 })#~2400 second query
 )
 setkey(RDDENS,uid)
-
 
 registerDoMC(cores=detectCores()-1)
 KMTOHWY <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", .combine=rbind) %dopar% {
@@ -87,7 +82,6 @@ KMTOHWY <- as.data.table(foreach(i = 1:length(chunks), .packages="RPostgreSQL", 
 })#~900 second query
 setkey(KMTOHWY,uid)
 
-
 KMTODEV <- as.data.table(dbGetQuery(con,"
   SELECT
     r.uid AS uid, p.kmtodev as kmtodev
@@ -99,7 +93,6 @@ KMTODEV <- as.data.table(dbGetQuery(con,"
 	WHERE ST_Intersects(p.geom,r.geom)
   ")) #~100 second query
 setkey(KMTODEV,uid)
-
 
 INCOMEPP <- as.data.table(dbGetQuery(con,"
   SELECT
@@ -113,7 +106,6 @@ INCOMEPP <- as.data.table(dbGetQuery(con,"
   ")) #~200 second query
 setkey(INCOMEPP,uid)
 
-
 POPDENS <- as.data.table(dbGetQuery(con,"
   SELECT
     r.uid AS uid, p.popdens as popdens
@@ -126,7 +118,6 @@ POPDENS <- as.data.table(dbGetQuery(con,"
   ")) #~90 second query
 setkey(POPDENS,uid)
 
-
 SPEEDLMT <- as.data.table(dbGetQuery(con,"
   SELECT
       r.uid as uid, mode() WITHIN GROUP (ORDER BY p.speedlmt) AS speedlmt
@@ -137,7 +128,6 @@ SPEEDLMT <- as.data.table(dbGetQuery(con,"
   ")) #~10 second query
 setkey(SPEEDLMT,uid)
 
-
 AADT <- as.data.table(dbGetQuery(con,"
   SELECT
     r.uid AS uid, round(avg(p.aadt),0) as aadt
@@ -147,7 +137,6 @@ AADT <- as.data.table(dbGetQuery(con,"
   GROUP BY r.uid
   ")) #~1 second query
 setkey(AADT,uid)
-
 
 merged.data <- Reduce(function(x, y) merge(x, y, all=TRUE), list(XY,AADT,SPEEDLMT,RDCLASS,RDDENS,KMTOHWY,KMTODEV,POPDENS))
 

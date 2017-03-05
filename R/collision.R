@@ -1,7 +1,7 @@
 require(RPostgreSQL)
 require(data.table)
 require(raster)
-require(boot)
+#require(boot)
 
 drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
 con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
@@ -164,79 +164,3 @@ val.data <- na.omit(val.data)
 val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
 
 roc.val <- roc(val.data$coll, val.pred.glm)  #Compare collision records to predictions using receiver operator characteristic (ROC) function and report value
-
-set.seed(123)
-cost <- function(r, pi = 0) mean(abs(r-pi) > 0.5)
-(cv.10.err <- cv.glm(model.data, coll.glm, cost=cost, K = 10)$delta)
-
-require(loo)
-require(rstan)
-rstan_options(auto_write = TRUE)
-options(mc.cores = parallel::detectCores()-1)
-
-N <- nrow(model.data)
-y <- model.data$coll
-x1 <- model.data$log.egk
-x2 <- model.data$log.tvol
-x3 <- model.data$log.tspd
-
-scode <- "
-data{
-int<lower=1> N;
-int<lower=0,upper=1> y[N];
-real x1[N];
-real x2[N];
-real x3[N];
-}
-parameters{
-real a;
-real b1;
-real b2;
-real b3;
-}
-transformed parameters {
-  real p[N];
-  for (i in 1:N)
-    p[i] <- inv_cloglog(a + b1 * x1[i] + b2 * x2[i] + b3 * x3[i]);
-}
-model{
-b3 ~ normal( 0 , 1 );
-b2 ~ normal( 0 , 1 );
-b1 ~ normal( 0 , 1 );
-a ~ normal( 0 , 1 );
-y ~ binomial( 1 , p );
-}
-generated quantities{
-real log_lik[N];
-real yhat[N];
-for (i in 1:N) {
-    log_lik[i] <- y[i]*log(p[i]) + (1-y[i])*log(1-p[i]);  
-    yhat[i] <- p[i]*1;
-  }
-}
-"
-
-coll_model_fit <- stan(model_code = scode, iter = 1000, chains = 3, cores = 3, seed=123)
-#summary(coll_model_fit)
-traceplot(coll_model_fit,pars=c("a","b1","b2","b3"))
-
-log_lik_coll <- extract_log_lik(coll_model_fit)
-loo_coll <- loo(log_lik_coll)
-
-require(rethinking)
-
-set.seed(123) 
-coll.map <- map(
-  alist(
-    y ~ dbinom(1,p), 
-    p <- 1 - exp(-exp(a + b1*log(x1) + b2*log(x2) + b3*log(x3))),
-    a ~ dnorm(0,100),
-    b1 ~ dnorm(0,1),
-    b2 ~ dnorm(0,1),
-    b3 ~ dnorm(0,1)
-  ),
-  start=list(a=0.5,b1=0,b2=0,b3=0),
-  data=list(y=model.data$coll,x1=model.data$egk,x2=model.data$tvol,x3=model.data$tspd)
-)
-precis(coll.map)
-WAIC(coll.map)
