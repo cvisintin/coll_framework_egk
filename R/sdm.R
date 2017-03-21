@@ -35,6 +35,8 @@ set.seed(123) #Set random seed to make results of gradient boosted regressions i
 
 kang.brt = gbm.step(data = model.data, gbm.x = 4:10, gbm.y = 3, family = "bernoulli", tree.complexity = 7, learning.rate = 0.005, bag.fraction = 0.5) #Create boosted regression tree model
 
+save(kang.brt,file="output/egk_brt_model")
+
 brt.preds <- predict(vars, kang.brt, n.trees=kang.brt$gbm.call$best.trees, type="response") #Make predictions with model fit based on covariate values in maps
 
 save(brt.preds,file="output/egk_brt_preds")
