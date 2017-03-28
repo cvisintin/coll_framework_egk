@@ -35,8 +35,10 @@ speed.preds <- predict(speed.rf, model.data, type="response")
 speed.preds.df <- cbind("uid"=model.data$uid,"tspd"=speed.preds)  #Combine predictions with unique IDs for all road segments
 write.csv(speed.preds.df, file = "output/tspd_preds_rf.csv", row.names=FALSE)
 
-speed.preds.dt <- as.data.table(speed.preds.df)
-setkey(speed.preds.dt,uid)
-perf.spd <- merge(speed.preds.dt,model.data[!is.na(model.data$speedlmt),])
-plot(perf.spd$speedlmt,perf.spd$tspd)
-abline(a=0,b=.5, lty=2)
+save(volume.rf,speed.rf,file="output/rf_models")
+
+# speed.preds.dt <- as.data.table(speed.preds.df)
+# setkey(speed.preds.dt,uid)
+# perf.spd <- merge(speed.preds.dt,model.data[!is.na(model.data$speedlmt),])
+# plot(perf.spd$speedlmt,perf.spd$tspd)
+# abline(a=0,b=.5, lty=2)
