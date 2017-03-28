@@ -1,3 +1,6 @@
+load("output/rf_models")
+model.data <- as.data.table(read.delim("data/vic_model_data_traffic.csv", header=T, sep=","))  #Read in traffic volume data for road segments
+
 volume.vars <- names(model.data[!is.na(model.data$aadt),.(kmtodev,kmtohwy,popdens,rdclass,rddens)])
 for(i in 1:length(volume.vars)){
   temp <- partialPlot(volume.rf,as.data.frame(model.data[!is.na(model.data$aadt),]),x.var=volume.vars[i], xlab=toupper(volume.vars[i]), ylab="AADT", n.pt=100, plot=FALSE)
