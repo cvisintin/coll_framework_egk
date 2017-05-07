@@ -38,7 +38,3 @@ ggplot(plot.data[34:53,]) +
   theme(text = element_text(size = 8)) +
   scale_x_continuous(breaks=seq(0,40,by=5), expand = c(0, 0), lim=c(0,40))
 dev.off()
-#  theme(panel.grid.major.x = element_blank(),
-#    panel.grid.major.y = element_line(linetype=3, color="darkgray"),
-#    axis.text.y=element_text(size=rel(0.8))
-#    ) 

@@ -1,7 +1,6 @@
 require(RPostgreSQL)
 require(data.table)
 require(raster)
-#require(boot)
 
 drv <- dbDriver("PostgreSQL")  #Specify a driver for postgreSQL type database
 con <- dbConnect(drv, dbname="qaeco_spatial", user="qaeco", password="Qpostgres15", host="boab.qaeco.com", port="5432")  #Connection to database server on Boab
@@ -63,41 +62,9 @@ data1 <- merge(cov.data, coll)
 
 set.seed(123)
 data0 <- cbind(cov.data[sample(seq(1:nrow(cov.data)),2*nrow(data1)),],"coll"=rep(0,2*nrow(data1)))
-#data0 <- cbind(cov.data,"coll"=rep(0,nrow(cov.data)))
-
-# nocoll <- as.data.table(dbGetQuery(con,"
-#   SELECT DISTINCT ON (p.id)
-#     r.uid AS uid, CAST(0 AS INTEGER) AS coll
-#   FROM
-#     gis_victoria.vic_gda9455_roads_state as r,
-#     (SELECT
-#       id, geom
-#     FROM
-#       gis_victoria.vic_gda9455_fauna_wv
-#     WHERE
-#       cause = 'hit by vehicle'
-#     AND
-#       year < 2013) AS p
-#   WHERE ST_DWithin(p.geom,r.geom,100)
-#   ORDER BY p.id, ST_Distance(p.geom,r.geom), md5('seed' || r.uid)
-#   LIMIT 6000;
-#   "))
-# setkey(nocoll,uid)
-# 
-# data0 <- merge(cov.data, nocoll)
 
 model.data <- rbind(data1,data0)
 model.data <- na.omit(model.data)
-
-#Calculate natural logarithm of each covariate to test multiplicative effect of linear relationship
-#model.data$log.egk <- log(model.data$egk)
-#model.data$log.tvol <- log(model.data$tvol)
-#model.data$log.tspd <- log(model.data$tspd)
-
-#Center logged covariates by subtracting means
-#model.data$c.log.egk <- model.data$log.egk - mean(model.data$log.egk)
-#model.data$c.log.tvol <- model.data$log.tvol - mean(model.data$log.tvol)
-#model.data$c.log.tspd <- model.data$log.tspd - mean(model.data$log.tspd)
 
 coll.glm <- glm(formula = coll ~ log(egk) + log(tvol) + log(tspd), family=binomial(link = "cloglog"), data = model.data)  #Fit regression model
 
@@ -150,16 +117,6 @@ data0v <- cbind(cov.data[sample(seq(1:nrow(cov.data)),2*nrow(data1v)),],"coll"=r
 
 val.data <- rbind(data1v,data0v)
 val.data <- na.omit(val.data)
-
-# #Calculate natural logarithm of each covariate
-# val.data$log.egk <- log(val.data$egk)
-# val.data$log.tvol <- log(val.data$tvol)
-# val.data$log.tspd <- log(val.data$tspd)
-# 
-# #Center logged covariates by subtracting means to match covariates used in regression model
-# val.data$c.log.egk <- val.data$log.egk - mean(val.data$log.egk)
-# val.data$c.log.tvol <- val.data$log.tvol - mean(val.data$log.tvol)
-# val.data$c.log.tspd <- val.data$log.tspd - mean(val.data$log.tspd)
 
 val.pred.glm <- predict(coll.glm, val.data, type="response")  #Make predictions with regression model fit
 
